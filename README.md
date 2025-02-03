@@ -3,6 +3,11 @@
 ### How to Run
 To start, run `cd wikismart` to get to the correct folder. Then, run `npm i` to install all necessary packages needed. To start the interface, run `npm start`. There is no personal API-key you need to generate to run this interface.
 
+### How to Use WikiSmart
+On the landing page, you have the option to search for a specific Wikipedia article, or to generate a random article. Be careful while searching, because any typos will result in no generated articles (aka no matches). For example, if I wanted an article on `Santa Claus`, but I typed in `Santa Clous`, my search would yield an empty page and no article matches. However, if I type `Einstein`, I would get the article on `Albert Einstein`. Typos will yield in no generated articles, but typing a commonly known substring of the person, place, or idea you want an article on should generate a valid article (but it might not be on the exact topic you are looking for, depending on how common the substring you searched is). Finally, searches are not case sensitive, so use any form of capitalization you wish. <br>
+
+After getting a valid article, you will get a thumbnail image (if one exists in the API JSON), an article prreview, a link to the entire Wikipedia article, as well as 5 related article links. You also have the option to continue searching for other articles, or generating random ones.
+
 ### API Used
 I used Wikipedia's MediaWiki API for this project to query user and random article searches. The API was able to give me information, including article title, a preview, a thumbnail, and related links. 
 
