@@ -20,6 +20,13 @@ export default function Wikismart() {
 
         // Extract snippet
         const firstResult = data.query.search[0];
+
+        // Ensure the first result closely matches / is included in the input query
+        if (!firstResult.title.toLowerCase().includes(title.toLowerCase())) {
+          throw new Error(`No close match found for "${title}". Try refining your search.`);
+        }
+
+        // Convert snippet to plaintext article preview
         var plainSnippet = firstResult.snippet.replace(/<\/?[^>]+(>|$)/g, "");
         plainSnippet = `${plainSnippet}...`;
 
@@ -44,6 +51,7 @@ export default function Wikismart() {
     } catch (error) {
         console.error("Error fetching article.");
         setArticle(null);
+        setRelated([]);
     }
   };
 
@@ -75,12 +83,22 @@ export default function Wikismart() {
   };
 
   const fetchRandomArticle = async () => {
-    const randomApiUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&list=random&rnlimit=1&origin=*`;
+    const randomApiUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&list=random&rnlimit=10&origin=*`;
 
     try {
       const response = await fetch(randomApiUrl);
       const data = await response.json();
-      const randomTitle = data.query.random[0].title;
+      let randomArticles = data.query.random;
+
+      // Filter out unwanted titles
+      randomArticles = randomArticles.filter((item) => !item.title.includes(":"));
+
+      if (randomArticles.length === 0) {
+        throw new Error("No valid random articles found.");
+      }
+
+      const randomTitle = randomArticles[0].title;
+
       setQuery(randomTitle);
       fetchArticle(randomTitle);
       setSearched(true);
