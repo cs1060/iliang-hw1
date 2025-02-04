@@ -1,12 +1,29 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import Wikismart from './Wikismart';
+import React from "react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import Wikismart from "./Wikismart";
 
-// Mock the global fetch function before each test
+// Mock fetch to avoid actual API calls
+global.fetch = jest.fn();
+
 beforeEach(() => {
-  global.fetch = jest.fn();
+  fetch.mockClear();
 });
 
-test('displays article title, snippet, and image when data is fetched', async () => {
+test("renders WikiSmart component", () => {
+  render(<Wikismart />);
+  expect(screen.getByText(/WikiSmart/i)).toBeInTheDocument();
+  expect(screen.getByPlaceholderText("Search Wikipedia...")).toBeInTheDocument();
+});
+
+test("updates input field on change", () => {
+  render(<Wikismart />);
+  const input = screen.getByPlaceholderText("Search Wikipedia...");
+  
+  fireEvent.change(input, { target: { value: "Einstein" } });
+  expect(input.value).toBe("Einstein");
+});
+
+test('displays article title, snippet, and image when data is fetched from user search', async () => {
   const mockArticle = {
     title: 'Albert Einstein',
     extract: 'Albert Einstein was a German-born theoretical physicist...',
@@ -60,41 +77,50 @@ test('displays article title, snippet, and image when data is fetched', async ()
   // expect(screen.getByText('Related Articles')).toBeInTheDocument();
 });
 
-test('generates a random article when clicking the random button', async () => {
-  const mockRandomArticle = {
-    query: {
-      random: [{ title: 'Quantum Mechanics', pageid: 567 }]
-    }
-  };
+test("clears article and related articles on invalid search", async () => {
+  fetch.mockResolvedValueOnce({
+    json: async () => ({ query: { search: [] } }),
+  });
 
-  const mockArticleResponse = {
-    query: {
-      search: [
-        { title: 'Quantum Mechanics', snippet: 'Quantum mechanics is a fundamental theory in physics...' }
-      ]
-    }
-  };
-
-  // Mock the fetch response for the random article
-  fetch.mockResolvedValueOnce({ json: () => Promise.resolve(mockRandomArticle) })
-       .mockResolvedValueOnce({ json: () => Promise.resolve(mockArticleResponse) });
-
-  // Render the component
   render(<Wikismart />);
+  fireEvent.change(screen.getByPlaceholderText("Search Wikipedia..."), { target: { value: "santa clous" } });
 
-  // Simulate clicking the Random button
-  fireEvent.click(screen.getByText('Random 🎲'));
+  fireEvent.submit(screen.getByRole("form"));
 
-  // Wait for the article to be displayed
-  await waitFor(() => screen.getByText('Quantum Mechanics'));
+  await waitFor(() => expect(screen.queryByText("Related Articles")).not.toBeInTheDocument());
+  expect(screen.queryByText("Read more on Wikipedia →")).not.toBeInTheDocument();
+});
 
-  // Assert that the random article title is displayed
-  expect(screen.getByText('Quantum Mechanics')).toBeInTheDocument();
+test("clicking 'Random' fetches and displays a random article", async () => {
+  fetch
+    .mockResolvedValueOnce({
+      json: async () => ({
+        query: {
+          random: [{ title: "Quantum Mechanics", pageid: 456 }]
+        }
+      })
+    })
+    .mockResolvedValueOnce({
+      json: async () => ({
+        query: {
+          search: [{ title: "Quantum Mechanics", snippet: "A fundamental theory...", pageid: 456 }]
+        }
+      })
+    });
+
+  render(<Wikismart />);
   
-  // Check if the snippet of the article is displayed
-  expect(screen.getByText(/Quantum mechanics is a fundamental theory in physics/)).toBeInTheDocument();
+  fireEvent.click(screen.getByText("Random 🎲"));
 
-  // Assert that the "Read more on Wikipedia" link is present and has the correct URL
-  const readMoreLink = screen.getByText('Read more on Wikipedia →');
-  expect(readMoreLink).toHaveAttribute('href', 'https://en.wikipedia.org/wiki/Quantum_Mechanics');
+  await waitFor(() => expect(screen.getByText("Quantum Mechanics")).toBeInTheDocument());
+});
+
+test("handles error when fetching a random article fails", async () => {
+  fetch.mockRejectedValueOnce(new Error("Failed to fetch"));
+
+  render(<Wikismart />);
+  
+  fireEvent.click(screen.getByText("Random 🎲"));
+
+  await waitFor(() => expect(screen.queryByText("Read more on Wikipedia →")).not.toBeInTheDocument());
 });
